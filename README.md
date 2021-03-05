@@ -15,7 +15,7 @@ Note on the ePaper display - I tried switching to one of those cool 3-color mode
 
 Hardware/install details - https://www.youtube.com/watch?v=ECt_lBkswTw  
 
-# Notes  
+# Software  
 Update line 21 in the sketch:  
 > const char *ssid="yourwifissid", *pass="yourwifipass", *lnBitsAPIKey="yourlnbitswalletapikey", *webhookEndpoint="http://yourwebhookendpoint:39780";  
 
