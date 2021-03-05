@@ -21,7 +21,7 @@ Update line 21 in the sketch:
 
 ...to contain your wifi SSID and password (version 2 will have a captive portal for wifi setup and will allow OTA updates, but not supported yet), your LNbits api key (available after creating a custodial wallet at https://lnbits.com), and your webhook endpoint.  
 
-The webhook endpoint is your esp32. If your internet connection has a static IP address, use your IP, e.g. http://55.44.33.22:39780. If you don't have a static IP (it's changed periodically by your ISP), register for a free dynamic DNS service. I use https://duckdns.org. This gives you a DNS name that will always point to your IP address, e.g. https://SOMEHOSTNAME.duckdns.org where SOMEHOSTNAME is the name you picked when creating your duckdns account.  
+The webhook endpoint is your esp32. If your internet connection has a static IP address, use your IP, e.g. http://55.44.33.22:39780. If you don't have a static IP (it's changed periodically by your ISP), register for a free dynamic DNS service. I use https://www.duckdns.org. This gives you a DNS name that will always point to your IP address, e.g. https://SOMEHOSTNAME.duckdns.org where SOMEHOSTNAME is the name you picked when creating your duckdns account.  
 
 Then, in your router configuration settings, port forward TCP port 39780 to your esp32's private IP address within your network. More info here - https://www.howtogeek.com/66214/how-to-forward-ports-on-your-router/  
 
