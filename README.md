@@ -1,5 +1,8 @@
 # lnCandyESP32  
 
+Tf is bitcoin? - https://www.youtube.com/watch?v=bBC-nXj3Ng4  
+...then what's ln/lightning network? - https://www.youtube.com/watch?v=rrr_zPmEiME  
+
 An esp32-controlled candy machine that accepts bitcoin (lightning network) payments. Very short demo - https://www.youtube.com/watch?v=qnh52xSBXpo. Pardon the music, I blame the kids >.>  
 
 # Hardware  
