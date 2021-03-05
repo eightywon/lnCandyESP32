@@ -1,9 +1,9 @@
 # lnCandyESP32  
+An esp32-controlled candy machine that accepts bitcoin (lightning network) payments. Very short demo - https://www.youtube.com/watch?v=qnh52xSBXpo. Pardon the music, I blame the kids >.>  
 
 Tf is bitcoin? - https://www.youtube.com/watch?v=bBC-nXj3Ng4  
-...then what's ln/lightning network? - https://www.youtube.com/watch?v=rrr_zPmEiME  
 
-An esp32-controlled candy machine that accepts bitcoin (lightning network) payments. Very short demo - https://www.youtube.com/watch?v=qnh52xSBXpo. Pardon the music, I blame the kids >.>  
+...then what's ln/lightning network? - https://www.youtube.com/watch?v=rrr_zPmEiME  
 
 # Hardware  
 * Servo (any small 360* rotation servo should work) - https://www.amazon.com/gp/product/B07FVLQ94C/ref=ppx_yo_dt_b_asin_title_o05_s00?ie=UTF8&psc=1  
