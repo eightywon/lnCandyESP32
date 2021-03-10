@@ -10,9 +10,17 @@
 #include <EEPROM.h>
 #include "dorian.h"
 
+//OTA updates
+#include <WebServer.h>
+#include <WiFiClient.h>
+#include <ESPmDNS.h>
+#include <Update.h>
+#include "ota.h"
+
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 WiFiServer webhookServer(39780); //webhook listener (for monitoring payments)
+WebServer ota(80);
 Servo servo;
 
 //BUSY->25, RST->26, DC->27, CS->15, CLK->13, DIN->14
@@ -54,7 +62,7 @@ void setup() {
 
   timeClient.begin();
   webhookServer.begin();
-
+  
   EEPROM.begin(32);
   EEPROM.get(0, unitsSold);
   if (unitsSold == -1) {
@@ -66,6 +74,48 @@ void setup() {
   //create the task on core 0 that monitors for servo stop timing
   //putting this on a different core allows finer tuned control of total servo rotation
   xTaskCreatePinnedToCore(stopServo,"stopServo",10000,NULL,0,NULL,0); 
+
+  //testing OTA
+  /*use mdns for host name resolution*/
+  if (!MDNS.begin(thisHost)) {
+    Serial.println("Error setting up MDNS responder!");
+    while (1) {
+      delay(1000);
+    }
+  }
+  Serial.println("mDNS responder started");
+  /*return index page which is stored in Index */
+  ota.on("/", HTTP_GET, []() {
+    ota.sendHeader("Connection", "close");
+    ota.send(200, "text/html", serverIndex);
+  });
+  /*handling uploading firmware file */
+  ota.on("/update", HTTP_POST, []() {
+    ota.sendHeader("Connection", "close");
+    ota.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    ESP.restart();
+  }, []() {
+    HTTPUpload& upload = ota.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.printf("Update: %s\n", upload.filename.c_str());
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      /* flashing firmware to ESP*/
+      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (Update.end(true)) { //true to set the size to the current progress
+        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+      } else {
+        Update.printError(Serial);
+      }
+    }
+  });
+  ota.begin();
+  //testing OTA
 }
 
 void loop() {
@@ -77,6 +127,7 @@ void loop() {
     paymentHash=createInvoice();
     display.hibernate();
   }
+  ota.handleClient(); //testing OTA
 }
 
 void handleWebhook() {
@@ -190,7 +241,7 @@ String createInvoice() {
 
 bool createInvoiceQR () {
   Serial.println("creating QR code from payment_request");
-  String msgs[] = {"Scan to Pay"};
+  String msgs[] = {"SCAN TO PAY"};
   displayText(msgs, sizeof(msgs) / sizeof(msgs[0]), 0, 12, 0, 0, false);
   // Create the QR code
   QRCode qrcode;
@@ -263,7 +314,7 @@ void showDorian(bool boot) {
    display.firstPage();
    display.fillScreen(GxEPD_WHITE);
   } else {
-    String msgs[] = {"Enjoy your candy!"};
+    String msgs[] = {"ENJOY YOUR CANDY"};
     displayText(msgs, sizeof(msgs)/sizeof(msgs[0]), 0, 192, 0, 0, false);
   }
   display.drawInvertedBitmap(0, 0, dorian, 200, 180, GxEPD_BLACK);
