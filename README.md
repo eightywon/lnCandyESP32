@@ -31,4 +31,7 @@ Setting up the webhook allows your esp32 to listen for successful payments. When
 
 This webhook is handled in the sketch and is what triggers the servo to disepnse candy and a new invoice to be created for the next sale. In this way, LNBits can "push" to us the fact that a payment has been made rather than us polling their servers continuously checking for the completed payment ("pulling") .  
 
+# Changelog  
+* 03/10/21 - added support of OTA updates  
+* 03/05/21 - initial commits  
 
