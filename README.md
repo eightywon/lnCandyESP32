@@ -19,7 +19,7 @@ Hardware/install details - https://www.youtube.com/watch?v=ECt_lBkswTw
 Update line 21 in the sketch:  
 > const char *ssid="yourwifissid", *pass="yourwifipass", *lnBitsAPIKey="yourlnbitswalletapikey", *webhookEndpoint="http://yourwebhookendpoint:39780";  
 
-...to contain your wifi SSID and password (version 2 will have a captive portal for wifi setup and will allow OTA updates, but not supported yet), your LNbits api key (available after creating a custodial wallet at https://lnbits.com), and your webhook endpoint.  
+...to contain your wifi SSID and password (version 2 will have a captive portal for wifi setup but not supported yet), your LNbits api key (available after creating a custodial wallet at https://lnbits.com), and your webhook endpoint.  
 
 The webhook endpoint is your esp32. If your internet connection has a static IP address, use your IP, e.g. http://55.44.33.22:39780. If you don't have a static IP (it's changed periodically by your ISP), register for a free dynamic DNS service. I use https://www.duckdns.org. This gives you a DNS name that will always point to your IP address, e.g. https://SOMEHOSTNAME.duckdns.org where SOMEHOSTNAME is the name you picked when creating your duckdns account.  
 
