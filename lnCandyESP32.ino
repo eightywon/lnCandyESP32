@@ -246,12 +246,15 @@ bool createInvoiceQR () {
   // Create the QR code
   QRCode qrcode;
   uint8_t qrcodeData[qrcode_getBufferSize(11)];
-  qrcode_initText(&qrcode, qrcodeData, 11, 0, paymentRequest.c_str());
+  paymentRequest.toUpperCase(); //BOLT11 spec supports payment request in all caps - this allows us to stay in the
+                                //QR code alphanumeric (0-9, A-Z) space as opposed to binary (mixed case), allowing
+                                //for support of longer payment requests in same-sized (v11) QR codes
+  qrcode_initText(&qrcode, qrcodeData, 11, 0, paymentRequest.c_str()); //QR code v11, 61x61, 468 bytes of info
 
-  byte box_x = 8; //start drawing 8 from left
-  byte box_y = 17; //start drawing 16 from top
-  byte box_s = 3; //make each square 3 units
-  byte init_x = box_x;
+  byte box_x=8;  //start drawing 8 from left
+  byte box_y=16; //start drawing 16 from top
+  byte box_s=3;  //make each square 3 units, 61*3=183px
+  byte init_x=box_x;
 
   for (uint8_t y = 0; y < qrcode.size; y++) {
     // Each horizontal module
