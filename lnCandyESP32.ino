@@ -28,10 +28,9 @@ GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(15,27,2
 
 const char *ssid="yourwifissid", *pass="yourwifipass", *lnBitsAPIKey="yourlnbitswalletapikey", *webhookEndpoint="http://yourwebhookendpoint:39780";
 const char *LNhost="lnbits.com", *invoiceEndpoint="https://lnbits.com/api/v1/payments", *thisHost="lncandy";
-const char fingerprint[] PROGMEM="50 C5 B3 CE 5F 92 8D 7A 8B CC 4C A7 B9 F0 C8 22 AD A8 2F 76"; //sha1 fingerprint for lnbits.com
 
-const uint32_t invoiceExpOffset=(24 * 60 * 60); //LNbits invoices expire after 24 hours - after this period, we request a new invoice and generate new QR code
-const uint16_t webhookTimeout=2000, candyCost=25, servoRunFor=1050; //(PB M&Ms=1100)
+const uint32_t invoiceExpOffset=(24*60*60); //LNbits invoices expire after 24 hours - after this period, we request a new invoice and generate new QR code
+const uint16_t webhookTimeout=2000, candyCost=25, servoRunFor=1050; //(PB M&Ms=1050)
 const int16_t servoRotation=-180; //pos=clockwise, neg=counter-clockwise (counter for great northern gumball machine)
 
 const bool debug=true; //set to true for serial debugging output
@@ -44,10 +43,14 @@ void setup() {
   display.init(115200);
   SPI.end(); // release standard SPI pins, e.g. SCK(18), MISO(19), MOSI(23), SS(5)
   SPI.begin(13, 12, 14, 15); // map and init SPI pins SCK(13), MISO(12), MOSI(14), SS(15)
+
+  //###1.01 MOVE THIS TO A resetDisplay procedure?###
   display.setRotation(1);
   display.setFont(&FreeMonoBold9pt7b);
   display.setTextColor(GxEPD_BLACK);
   display.setFullWindow();
+  //###1.01 MOVE THIS TO A resetDisplay procedure?###
+  
   showDorian(true);
   
   WiFi.begin(ssid,pass);
@@ -55,8 +58,17 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
-  String msgs[] = {WiFi.localIP().toString()};
-  displayText(msgs, sizeof(msgs)/sizeof(msgs[0]), 0, 0, 0, 0, true);
+
+  //show IP on ePaper, refactor this
+  String temp=WiFi.localIP().toString();
+  display.fillScreen(GxEPD_WHITE);
+  int16_t tbx, tby; uint16_t tbw, tbh;
+  display.getTextBounds(temp,0,0,&tbx,&tby,&tbw,&tbh);
+  uint16_t x = ((display.width() - tbw) / 2) - tbx;
+  uint16_t y = ((display.height() - tbh) / 2) - tby;
+  display.setCursor(x,y);
+  display.print(temp);
+  display.display(false);
   Serial.println(""); Serial.print("WiFi connected, "); Serial.print("IP address: "); Serial.println(WiFi.localIP());
   delay(1000);
 
@@ -75,8 +87,6 @@ void setup() {
   //putting this on a different core allows finer tuned control of total servo rotation
   xTaskCreatePinnedToCore(stopServo,"stopServo",10000,NULL,0,NULL,0); 
 
-  //testing OTA
-  /*use mdns for host name resolution*/
   if (!MDNS.begin(thisHost)) {
     Serial.println("Error setting up MDNS responder!");
     while (1) {
@@ -115,7 +125,6 @@ void setup() {
     }
   });
   ota.begin();
-  //testing OTA
 }
 
 void loop() {
@@ -202,8 +211,8 @@ String createInvoice() {
   JSONVar postData;
   postData["out"]=false;
   postData["amount"]=candyCost;
-  timeClient.update(); String temp="For Candy at "; temp.concat(timeClient.getEpochTime());
-  postData["memo"]=temp;
+  timeClient.update(); String memo="For Candy at "; memo.concat(timeClient.getEpochTime());
+  postData["memo"]=memo;
   postData["webhook"]=webhookEndpoint;
 
   //make invoice creation API call to LNbits
@@ -216,7 +225,7 @@ String createInvoice() {
     rest.addHeader("Host", LNhost);
     rest.addHeader("X-Api-Key", lnBitsAPIKey);
     httpResponseCode=rest.POST(JSON.stringify(postData));
-  
+
     if (httpResponseCode>0) {
       JSONVar respObject=JSON.parse(rest.getString());
       paymentHash=respObject["payment_hash"];
@@ -230,22 +239,89 @@ String createInvoice() {
     } else {
       Serial.print("unable to generate invoice from lnbits, http status: ");
       Serial.println(httpResponseCode);
+
+      display.fillScreen(GxEPD_WHITE);
+
+      char temp[200];
+      int16_t tbx,tby; uint16_t tbw,tbh,x,y;
+      
+      sprintf(temp,"INV. CREATE ERR");
+      display.getTextBounds(temp,0,32,&tbx,&tby,&tbw,&tbh);
+      x=((display.width()-tbw)/2)-tbx;
+      y=((display.height()-tbh)/2)-tby;
+      display.setCursor(x,y);
+      display.print(temp);
+
+      sprintf(temp,"%s: %d",LNhost,httpResponseCode);
+      display.getTextBounds(temp,0,8,&tbx,&tby,&tbw,&tbh);
+      x=((display.width()-tbw)/2)-tbx;
+      y=((display.height()-tbh)/2)-tby;
+      display.setCursor(x,y);
+      display.print(temp);
+
+      sprintf(temp,"%d/%d",retries,10);
+      display.getTextBounds(temp,0,-16,&tbx,&tby,&tbw,&tbh);
+      x=((display.width()-tbw)/2)-tbx;
+      y=((display.height()-tbh)/2)-tby;
+      display.setCursor(x,y);
+      display.print(temp);
+      
+      
+      display.display(true);
       rest.end();
-      delay(3000); //wait 3 seconds before sending post again
+      delay(1000);
     }
   }
   Serial.println("couldn't create invoice, waiting 60 seconds");
-  delay(60000);
+
+  //###1.01 REFACTOR THIS
+  char temp[200];
+  int16_t tbx,tby; uint16_t tbw,tbh,x,y;
+
+  //###1.01 REFACTOR THIS
+  sprintf(temp,"Waiting 60s");
+  display.getTextBounds(temp,0,-112,&tbx,&tby,&tbw,&tbh);
+  x=((display.width()-tbw)/2)-tbx;
+  y=((display.height()-tbh)/2)-tby;
+  display.setCursor(x,y);
+  display.print(temp);
+      
+  uint32_t until=(millis()+60000);
+  retries=0;
+  while (millis()<until) {
+    uint16_t now=millis();
+    uint16_t elapsed=now-(until-60000);
+    float prog=float(elapsed)/float(60000);
+    updateProgress(int(prog*100));
+    retries++;
+  }
+  display.setFullWindow();
+  display.fillScreen(GxEPD_WHITE);
   return "";
 }
 
 bool createInvoiceQR () {
   Serial.println("creating QR code from payment_request");
-  String msgs[] = {"SCAN TO PAY"};
-  displayText(msgs, sizeof(msgs) / sizeof(msgs[0]), 0, 12, 0, 0, false);
+  display.fillScreen(GxEPD_WHITE);
+  //###1.01 REFACTOR THIS
+  char temp[200];
+  int16_t tbx,tby; uint16_t tbw,tbh,x,y;
+  //###1.01 REFACTOR THIS
+  sprintf(temp,"SCAN TO PAY");
+  display.getTextBounds(temp,0,92,&tbx,&tby,&tbw,&tbh);
+  x=((display.width()-tbw)/2)-tbx;
+  y=((display.height()-tbh)/2)-tby;
+  display.setCursor(x,y);
+  display.print(temp);
+  
+  //String msgs[] = {"SCAN TO PAY"};
+  //displayText(msgs, sizeof(msgs) / sizeof(msgs[0]), 0, 12, 0, 0, false);
   // Create the QR code
   QRCode qrcode;
   uint8_t qrcodeData[qrcode_getBufferSize(11)];
+
+  //need a test here to see if paymentRequest exceeds v11 QR data alphanumeric encoding limit of 468B
+  //if we exceed, display error or ?? maybe code to dynamically adjust QR version and reposition on screen?
   paymentRequest.toUpperCase(); //BOLT11 spec supports payment request in all caps - this allows us to stay in the
                                 //QR code alphanumeric (0-9, A-Z) space as opposed to binary (mixed case), allowing
                                 //for support of longer payment requests in same-sized (v11) QR codes
@@ -256,18 +332,17 @@ bool createInvoiceQR () {
   byte box_s=3;  //make each square 3 units, 61*3=183px
   byte init_x=box_x;
 
-  for (uint8_t y = 0; y < qrcode.size; y++) {
-    // Each horizontal module
-    for (uint8_t x = 0; x < qrcode.size; x++) {
-      if (qrcode_getModule(&qrcode, x, y)) {
+  for (uint8_t y=0; y<qrcode.size; y++) {
+    for (uint8_t x=0; x<qrcode.size; x++) {
+      if (qrcode_getModule(&qrcode,x,y)) {
         display.fillRect(box_x, box_y, box_s, box_s, GxEPD_BLACK);
       }
-      box_x = box_x + box_s;
+      box_x=box_x+box_s;
     }
-    box_y = box_y + box_s;
-    box_x = init_x;
+    box_y=box_y+box_s;
+    box_x=init_x;
   }
-  while (display.nextPage());
+  display.display(false);
   return true;
 }
 
@@ -313,15 +388,22 @@ void stopServo( void * pvParameters ) {
 }
 
 void showDorian(bool boot) {
-  if (boot) {
-   display.firstPage();
-   display.fillScreen(GxEPD_WHITE);
-  } else {
-    String msgs[] = {"ENJOY YOUR CANDY"};
-    displayText(msgs, sizeof(msgs)/sizeof(msgs[0]), 0, 192, 0, 0, false);
+  display.fillScreen(GxEPD_WHITE);
+  //###1.01 REFACTOR THIS
+  if (!boot) {
+    char temp[200];
+    int16_t tbx,tby; uint16_t tbw,tbh,x,y;
+    //###1.01 REFACTOR THIS
+    sprintf(temp,"ENJOY YOUR CANDY");
+    display.getTextBounds(temp,0,-188,&tbx,&tby,&tbw,&tbh);
+    x=((display.width()-tbw)/2)-tbx;
+    y=((display.height()-tbh)/2)-tby;
+    display.setCursor(x,y);
+    display.print(temp);
   }
   display.drawInvertedBitmap(0, 0, dorian, 200, 180, GxEPD_BLACK);
-  while (display.nextPage());
+  display.display(false);
+  //while (display.nextPage());
 }
 
 void checkSerialIn() {
@@ -343,4 +425,16 @@ void checkSerialIn() {
     dispenseCandy();
     servo.write(servoRotation);
   }
+}
+
+void updateProgress(int percent) {
+  display.setPartialWindow(0,0,display.width(),display.height());
+  percent*=2;
+  if (percent<=display.width()-12) {
+    display.setCursor(percent-2,188); display.print("|");
+    display.setCursor(percent-1,188); display.print("|");
+    display.setCursor(percent,188); display.print("|");
+  }
+  display.display(true);
+  //while (display.nextPage());
 }
