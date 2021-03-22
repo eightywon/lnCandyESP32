@@ -30,7 +30,7 @@ const char *ssid="yourwifissid", *pass="yourwifipass", *lnBitsAPIKey="yourlnbits
 const char *LNhost="lnbits.com", *invoiceEndpoint="https://lnbits.com/api/v1/payments", *thisHost="lncandy";
 
 const uint32_t invoiceExpOffset=(24*60*60); //LNbits invoices expire after 24 hours - after this period, we request a new invoice and generate new QR code
-const uint16_t webhookTimeout=2000, candyCost=25, servoRunFor=1050; //(PB M&Ms=1050)
+const uint16_t webhookTimeout=2000, candyCost=25, maxInvRetries=10, servoRunFor=1050; //(PB M&Ms=1050)
 const int16_t servoRotation=-180; //pos=clockwise, neg=counter-clockwise (counter for great northern gumball machine)
 
 const bool debug=true; //set to true for serial debugging output
@@ -218,7 +218,7 @@ String createInvoice() {
   //make invoice creation API call to LNbits
   int httpResponseCode=-1;
   int retries=0;
-  while (httpResponseCode<=0 && retries<10) {
+  while (httpResponseCode!=201 && retries<maxInvRetries) {
     retries++;
     rest.begin(invoiceEndpoint);
     rest.addHeader("Content-Type", "application/json");
@@ -226,7 +226,7 @@ String createInvoice() {
     rest.addHeader("X-Api-Key", lnBitsAPIKey);
     httpResponseCode=rest.POST(JSON.stringify(postData));
 
-    if (httpResponseCode>0) {
+    if (httpResponseCode==201) {
       JSONVar respObject=JSON.parse(rest.getString());
       paymentHash=respObject["payment_hash"];
       paymentRequest=respObject["payment_request"];
@@ -259,7 +259,7 @@ String createInvoice() {
       display.setCursor(x,y);
       display.print(temp);
 
-      sprintf(temp,"%d/%d",retries,10);
+      sprintf(temp,"%d/%d",retries,maxInvRetries);
       display.getTextBounds(temp,0,-16,&tbx,&tby,&tbw,&tbh);
       x=((display.width()-tbw)/2)-tbx;
       y=((display.height()-tbh)/2)-tby;
